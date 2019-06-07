@@ -20,12 +20,12 @@ import static com.sandro.mnisthandwrittendl4j.Constants.*;
 
 import com.sandro.mnisthandwrittendl4j.model.ImageModel;
 import com.sandro.mnisthandwrittendl4j.neural.ImageToINDArrayConverter;
+import com.sandro.mnisthandwrittendl4j.neural.CustomIterator;
 import com.sandro.mnisthandwrittendl4j.neural.NeuralNetworkManager;
-import java.io.IOException;
 import java.util.List;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
 /**
  *
@@ -33,17 +33,24 @@ import org.nd4j.linalg.dataset.DataSet;
  */
 public class LearinigLauncher {
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         // load taining images
         MnistImagesLoader imagesLoader = new MnistImagesLoader();
         List<ImageModel> trainingImages = imagesLoader.loadImages(TRAINING_IMAGES_FILE_PATH, TRAINING_LABELS_FILE_PATH, LEARN_SET_SIZE);
 
         // train model
         ImageToINDArrayConverter converter = new ImageToINDArrayConverter();
-        DataSet ds = new DataSet(converter.createInput(trainingImages), converter.createExpectedOutput(trainingImages));
+//        DataSet ds = new DataSet(converter.createInput(trainingImages), converter.createExpectedOutput(trainingImages));
+        DataSetIterator iterator = new CustomIterator(trainingImages);
         NeuralNetworkManager nnManager = new NeuralNetworkManager();
         MultiLayerNetwork network = nnManager.createNetwork();
-        nnManager.train(network, ds);
+
+//        RecordReader recordReader = new ImageRecordReader(28, 28, 1, new CustomPathLabelGenerator());
+        // Point to data path. 
+//        recordReader.initialize(new FileSplit(new File(IMAGES_PATH)));
+//        nnManager.train1(network, recordReader);
+//        nnManager.train(network, ds);
+        nnManager.train2(network, iterator);
         nnManager.saveModel(network);
 
         // load test images
@@ -55,5 +62,7 @@ public class LearinigLauncher {
         INDArray input = converter.createInput(testImages);
         INDArray expectedOutput = converter.createExpectedOutput(testImages);
         nnManager.test(network, input, expectedOutput);
+
+//        DataSetIterator iter = new RecordReaderDataSetIterator(recordReader, 784, 10);
     }
 }

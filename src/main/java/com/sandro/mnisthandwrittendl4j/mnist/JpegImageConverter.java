@@ -20,6 +20,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.imageio.ImageIO;
 
 /**
@@ -28,12 +30,14 @@ import javax.imageio.ImageIO;
  */
 public class JpegImageConverter {
 
-    private static final int OFFSET = 16;
+    private static final int IMAGES_OFFSET = 16;
+    private static final int LABELS_OFFSET = 8;
 
     public void mnistDbToJpegImages(String filePath) {
+        List<String> labels = readImagesLabels();
         File file = new File(filePath);
         try (FileInputStream fis = new FileInputStream(file)) {
-            fis.skip(OFFSET);
+            fis.skip(IMAGES_OFFSET);
             int curPixel = 0;
             int color;
             int[] pixels = new int[Constants.AMOUNT_OF_PIXELS_IN_IMAGE];
@@ -47,7 +51,7 @@ public class JpegImageConverter {
                         System.out.printf("Images parsed %s.%n", curImage);
                     }
 
-                    saveImageToDisk(pixels, curImage);
+                    saveImageToDisk(pixels, curImage, labels.get(curImage - 1));
                     pixels = new int[Constants.AMOUNT_OF_PIXELS_IN_IMAGE];
                     curPixel = 0;
                 }
@@ -57,7 +61,23 @@ public class JpegImageConverter {
         }
     }
 
-    private static void saveImageToDisk(int[] pixels, int curImage) throws IOException {
+    private List<String> readImagesLabels() {
+        File file = new File(Constants.TRAINING_LABELS_FILE_PATH);
+        List<String> labels = new ArrayList<>();
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fis.skip(LABELS_OFFSET);
+            int label;
+            while ((label = fis.read()) != -1) {
+                labels.add(String.valueOf(label));
+            }
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+
+        return labels;
+    }
+
+    private static void saveImageToDisk(int[] pixels, int curImage, String label) throws IOException {
         BufferedImage img = new BufferedImage(Constants.IMAGE_WIDTH, Constants.IMAGE_HEIGTH, BufferedImage.TYPE_BYTE_GRAY);
         for (int y = 0; y < Constants.IMAGE_HEIGTH; y++) {
             for (int x = 0; x < Constants.IMAGE_WIDTH; x++) {
@@ -66,7 +86,7 @@ public class JpegImageConverter {
             }
         }
 
-        File file = new File(Constants.IMAGES_PATH + curImage + "." + Constants.IMAGES_EXTENSION);
+        File file = new File(Constants.IMAGES_PATH + curImage + "-" + label + "." + Constants.IMAGES_EXTENSION);
         ImageIO.write(img, Constants.IMAGES_EXTENSION, file);
     }
 

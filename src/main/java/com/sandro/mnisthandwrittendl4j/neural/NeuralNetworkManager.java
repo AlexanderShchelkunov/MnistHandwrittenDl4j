@@ -20,12 +20,18 @@ import static com.sandro.mnisthandwrittendl4j.Constants.MODEL_FILE_PATH;
 import com.sandro.mnisthandwrittendl4j.EmpiricalValues;
 import java.io.File;
 import java.io.IOException;
+import org.datavec.api.records.reader.RecordReader;
+import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.nn.api.Layer;
 import org.deeplearning4j.nn.conf.MultiLayerConfiguration;
 import org.deeplearning4j.nn.conf.NeuralNetConfiguration;
 import org.deeplearning4j.nn.conf.distribution.UniformDistribution;
+import org.deeplearning4j.nn.conf.inputs.InputType;
+import org.deeplearning4j.nn.conf.layers.ConvolutionLayer;
 import org.deeplearning4j.nn.conf.layers.DenseLayer;
 import org.deeplearning4j.nn.conf.layers.OutputLayer;
+import org.deeplearning4j.nn.conf.layers.PoolingType;
+import org.deeplearning4j.nn.conf.layers.SubsamplingLayer;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
 import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
@@ -34,6 +40,8 @@ import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.learning.config.Adam;
 import org.nd4j.linalg.learning.config.Sgd;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 
@@ -57,7 +65,7 @@ public class NeuralNetworkManager {
         // here the actual learning takes place
         System.out.println("Start training.");
         long totalMs = 0;
-        for (int i = 0; i < EmpiricalValues.TRAINING_ITERATIONS; i++) {
+        for (int i = 0; i < EmpiricalValues.TRAINING_EPOCHS; i++) {
             long start = System.currentTimeMillis();
             network.fit(ds);
             long end = System.currentTimeMillis();
@@ -69,6 +77,27 @@ public class NeuralNetworkManager {
                 System.out.println("Saving intermediate model.");
                 ModelSerializer.writeModel(network, MODEL_FILE_PATH, true);
             }
+        }
+    }
+
+    public void train1(MultiLayerNetwork network, RecordReader recordReader) throws IOException {
+        // here the actual learning takes place
+        System.out.println("Start training.");
+        DataSetIterator iter = new RecordReaderDataSetIterator(recordReader, 2);
+        for (int i = 0; i < EmpiricalValues.TRAINING_EPOCHS; i++) {
+            System.out.println("Training iteration #" + i);
+            network.fit(iter);
+//            if (i > 0 && i % 100 == 0) {
+            saveModel(network);
+//            }
+        }
+    }
+
+    public void train2(MultiLayerNetwork network, DataSetIterator iterator) throws IOException {
+        for (int i = 0; i < EmpiricalValues.TRAINING_EPOCHS; i++) {
+            System.out.println("Training iteration #" + (i + 1));
+            network.fit(iterator);
+            saveModel(network);
         }
     }
 
@@ -163,5 +192,51 @@ public class NeuralNetworkManager {
 
         System.out.println("Total number of network parameters: " + totalNumParams);
         return net;
+    }
+
+    public MultiLayerNetwork createNetwork1() throws IOException {
+        int nChannels = 1; // Number of input channels
+        int seed = 123; // ??
+
+        MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
+                .seed(seed)
+                .l2(0.0005)
+                .weightInit(WeightInit.XAVIER)
+                .updater(new Adam(1e-3))
+                .miniBatch(true)
+                .list()
+                .layer(new ConvolutionLayer.Builder(5, 5)
+                        //nIn and nOut specify depth. nIn here is the nChannels and nOut is the number of filters to be applied
+                        .nIn(nChannels)
+                        .stride(1, 1)
+                        .nOut(20)
+                        .activation(Activation.IDENTITY)
+                        .build())
+                .layer(new SubsamplingLayer.Builder(PoolingType.MAX)
+                        .kernelSize(2, 2)
+                        .stride(2, 2)
+                        .build())
+                .layer(new ConvolutionLayer.Builder(5, 5)
+                        //Note that nIn need not be specified in later layers
+                        .stride(1, 1)
+                        .nOut(50)
+                        .activation(Activation.IDENTITY)
+                        .build())
+                .layer(new SubsamplingLayer.Builder(PoolingType.MAX)
+                        .kernelSize(2, 2)
+                        .stride(2, 2)
+                        .build())
+                .layer(new DenseLayer.Builder().activation(Activation.RELU)
+                        .nOut(100).build())
+                .layer(new OutputLayer.Builder(LossFunctions.LossFunction.NEGATIVELOGLIKELIHOOD)
+                        .nOut(Constants.AMOUNT_OF_DIGITS)
+                        .activation(Activation.SOFTMAX)
+                        .build())
+                .setInputType(InputType.convolutionalFlat(28, 28, 1)) //See note below
+                .build();
+        MultiLayerNetwork model = new MultiLayerNetwork(conf);
+        model.init();
+        model.setListeners(new ScoreIterationListener(EmpiricalValues.SCORE_LISTENER_ITERATIONS)); //Print score every 10 iterations and evaluate on test set every epoch
+        return model;
     }
 }

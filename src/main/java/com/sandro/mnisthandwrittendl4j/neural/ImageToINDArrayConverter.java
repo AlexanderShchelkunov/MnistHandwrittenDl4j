@@ -31,10 +31,11 @@ public class ImageToINDArrayConverter {
         INDArray input = Nd4j.zeros(images.size(), Constants.AMOUNT_OF_PIXELS_IN_IMAGE);
         for (int imageCount = 0; imageCount < images.size(); imageCount++) {
             ImageModel image = images.get(imageCount);
-            for (int pixelCount = 0; pixelCount < Constants.AMOUNT_OF_PIXELS_IN_IMAGE; pixelCount++) {
-                float pixelColor = image.getPixelsArray()[pixelCount];
-                input.putScalar(new int[]{imageCount, pixelCount}, pixelColor);
-            }
+//            for (int pixelCount = 0; pixelCount < Constants.AMOUNT_OF_PIXELS_IN_IMAGE; pixelCount++) {
+//                float pixelColor = image.getPixelsArray()[pixelCount];
+//                input.putScalar(new int[]{imageCount, pixelCount}, pixelColor);
+//            }
+            input.putRow(imageCount, Nd4j.create(image.getPixelsArray()));
         }
 
         return input;

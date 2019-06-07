@@ -24,12 +24,12 @@ public class EmpiricalValues {
     /**
      * Defines how often listener prints training results in console.
      */
-    public static final int SCORE_LISTENER_ITERATIONS = 10;
+    public static final int SCORE_LISTENER_ITERATIONS = 1000;
 
     /**
-     * Amount of training iterations. E.g. Amount of images (60 000) * 10 000 iterations = 600 000 000 trainings = a lot of time on CPU = makes me cry.
+     * Amount of training epochs.
      */
-    public static final int TRAINING_ITERATIONS = 1000;
+    public static final int TRAINING_EPOCHS = 1;
 
     /**
      * Amount of neurons on the hidden layer. There are some empirically-derived rules-of-thumb, of these, the most commonly relied on is 'the optimal size of
@@ -53,7 +53,7 @@ public class EmpiricalValues {
     /**
      * The networks can process the input more quickly and more accurately by ingesting mini batches 5-10 elements at a time in parallel.
      */
-    public static final boolean MINI_BATCHES = false;
+    public static final boolean MINI_BATCHES = true;
 
     private EmpiricalValues() {
     }
