@@ -9,7 +9,6 @@ import com.sandro.mnisthandwrittendl4j.Constants;
 import com.sandro.mnisthandwrittendl4j.LearinigLauncher;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
-import java.awt.Button;
 import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
@@ -21,7 +20,6 @@ import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.RenderingHints.Key;
 import java.awt.Stroke;
-import java.awt.TextField;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -45,11 +43,13 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JToolBar;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
 import javax.swing.UIManager;
 import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
@@ -156,6 +156,11 @@ public class UiLauncher {
             clearButton.addActionListener(clearListener);
 
             createRecognizeAction(tb);
+
+            JButton addToTrainingSetButton = new JButton("Add to training set");
+            tb.add(addToTrainingSetButton);
+            addToTrainingSetButton.addActionListener(new SaveActionListener(mainFrame, canvasImage));
+
             createTrainAction(tb);
 
             gui.add(tb, BorderLayout.PAGE_START);
@@ -171,6 +176,11 @@ public class UiLauncher {
         }
 
         return gui;
+    }
+
+    public void reloadNet() throws RuntimeException {
+        net = null;
+        loadNet();
     }
 
     private void loadNet() throws RuntimeException {
@@ -409,23 +419,42 @@ public class UiLauncher {
 
     private void createTrainAction(JToolBar tb) {
         ActionListener actionListener = (ActionEvent arg0) -> {
-            Dialog d = new Dialog(mainFrame, "Dialog Example", true);
-            d.setLayout(new FlowLayout());
-            Button okButton = new Button("OK");
-            TextField input = new TextField();
-            okButton.addActionListener((ActionEvent e) -> {
-                try {
-                    LearinigLauncher.main(null);
-                } catch (Exception ex) {
-                    LOGGER.error("Train error:", ex);
-                }
-            });
-            d.add(new Label("What was that?"));
-            d.add(input);
-            d.add(okButton);
-            d.setSize(300, 300);
-            d.setLocationRelativeTo(mainFrame);
-            d.setVisible(true);
+            try {
+                Dialog dialog = new Dialog(mainFrame, "Traing in propgress, please wait", true);
+                dialog.setLayout(new FlowLayout());
+                JProgressBar progressBar = new JProgressBar();
+                progressBar.setIndeterminate(true);
+                dialog.add(progressBar);
+                dialog.setSize(300, 300);
+                dialog.setLocationRelativeTo(mainFrame);
+                dialog.add(new Label("Training might take 5+ minutes. Please wait..."));
+
+                SwingWorker worker = new SwingWorker() {
+                    @Override
+                    public String doInBackground() throws Exception {
+                        LearinigLauncher.main(null);
+                        net = null;
+                        loadNet();
+                        return null;
+                    }
+
+                    @Override
+                    public void done() {
+                        SwingUtilities.invokeLater(() -> {
+                            dialog.setVisible(false);
+                            dialog.dispose();
+                        });
+                    }
+                };
+
+                worker.execute();
+                SwingUtilities.invokeLater(() -> {
+                    dialog.setVisible(true);
+                });
+
+            } catch (Exception ex) {
+                LOGGER.error("Train error:", ex);
+            }
         };
 
         JButton trainButton = new JButton("Train");
@@ -486,9 +515,9 @@ public class UiLauncher {
 //                System.out.println(Arrays.toString(pixels));
         for (int i = 0; i < pixels.length; i++) {
             if (pixels[i] == -1) {
-                pixels[i] = 0;
-            } else if (pixels[i] == 0) {
                 pixels[i] = 255;
+            } else if (pixels[i] == 0) {
+                pixels[i] = 1;
             }
         }
 //                System.out.println("Pixels after.");

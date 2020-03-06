@@ -37,6 +37,7 @@ public class LearinigLauncher {
 
     public static void main(String[] args) throws Exception {
         // load taining images
+        System.out.println("Here we go again");
         MnistImagesLoader imagesLoader = new MnistImagesLoader();
 //        DataSetIterator iterator = createMemoryIterator(imagesLoader);
         DataSetIterator iterator = new ImageIteratorFactory().get(Constants.IMAGES_PATH);
