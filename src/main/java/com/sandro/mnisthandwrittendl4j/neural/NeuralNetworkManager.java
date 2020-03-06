@@ -169,7 +169,7 @@ public class NeuralNetworkManager {
         // pretrain(true) when you want to do pretrain/finetune without changing
         // the previous layers finetuned weights that's for autoencoders and
         // rbms
-        listBuilder.backprop(true);
+//        listBuilder.backprop(true);
 
         // build and init the network, will check if everything is configured
         // correct
@@ -195,7 +195,7 @@ public class NeuralNetworkManager {
     }
 
     public MultiLayerNetwork createNetwork1() throws IOException {
-        int nChannels = 1; // Number of input channels
+        int nChannels = 1; // Number of input channels???
         int seed = 123; // ??
 
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()

@@ -6,7 +6,7 @@
 package com.sandro.mnisthandwrittendl4j.ui;
 
 import com.sandro.mnisthandwrittendl4j.Constants;
-import com.sandro.mnisthandwrittendl4j.model.ImageModel;
+import com.sandro.mnisthandwrittendl4j.LearinigLauncher;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Button;
@@ -14,7 +14,6 @@ import java.awt.Color;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.Graphics2D;
 import java.awt.GridBagLayout;
 import java.awt.Label;
@@ -33,10 +32,7 @@ import java.awt.image.DataBufferUShort;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -55,8 +51,8 @@ import javax.swing.JToolBar;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
-import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -64,12 +60,16 @@ import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  * @author Aleksandr_Thchelkuno
  */
 public class UiLauncher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(UiLauncher.class);
 
     /**
      * Image used to make changes.
@@ -93,8 +93,7 @@ public class UiLauncher {
     private JLabel imageLabel;
 
     private boolean dirty = false;
-    private Stroke stroke = new BasicStroke(
-            8, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.7f);
+    private Stroke stroke = new BasicStroke(8, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.7f);
     private RenderingHints renderingHints;
     private MultiLayerNetwork net;
     private JFrame mainFrame;
@@ -127,14 +126,10 @@ public class UiLauncher {
             final SpinnerNumberModel strokeModel
                     = new SpinnerNumberModel(8, 1, 16, 1);
             JSpinner strokeSize = new JSpinner(strokeModel);
-            ChangeListener strokeListener = (ChangeEvent arg0) -> {
+            ChangeListener strokeListener = arg0 -> {
                 Object o = strokeModel.getValue();
                 Integer i = (Integer) o;
-                stroke = new BasicStroke(
-                        i,
-                        BasicStroke.CAP_ROUND,
-                        BasicStroke.JOIN_ROUND,
-                        1.7f);
+                stroke = new BasicStroke(i, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.7f);
             };
             strokeSize.addChangeListener(strokeListener);
             strokeSize.setMaximumSize(strokeSize.getPreferredSize());
@@ -146,7 +141,7 @@ public class UiLauncher {
 
             tb.addSeparator();
 
-            ActionListener clearListener = (ActionEvent arg0) -> {
+            ActionListener clearListener = arg0 -> {
                 int result = JOptionPane.OK_OPTION;
                 if (dirty) {
                     result = JOptionPane.showConfirmDialog(
@@ -180,7 +175,7 @@ public class UiLauncher {
 
     private void loadNet() throws RuntimeException {
         if (net == null) {
-            File modelFile = new File("./lenetmnist.zip");
+            File modelFile = new File(Constants.MODEL_FILE_PATH);
             if (modelFile.exists()) {
                 try {
                     net = ModelSerializer.restoreMultiLayerNetwork(modelFile);
@@ -188,7 +183,7 @@ public class UiLauncher {
                     throw new RuntimeException(ex);
                 }
             } else {
-                throw new RuntimeException("NN is not trained.");
+                throw new RuntimeException("NN is not trained (model file not found).");
             }
         }
     }
@@ -245,8 +240,7 @@ public class UiLauncher {
         JMenuItem newImageItem = new JMenuItem("New");
         newImageItem.setMnemonic('n');
         ActionListener newImage = (ActionEvent arg0) -> {
-            BufferedImage bi = new BufferedImage(
-                    360, 300, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage bi = new BufferedImage(360, 300, BufferedImage.TYPE_INT_ARGB);
             clear(bi);
             setImage(bi);
         };
@@ -258,44 +252,13 @@ public class UiLauncher {
         } else {
             //TODO Add save functionality using J2SE API
             file.addSeparator();
-            ActionListener openListener = (ActionEvent arg0) -> {
-                if (!dirty) {
-                    JFileChooser ch = getFileChooser();
-                    int result = ch.showOpenDialog(gui);
-                    if (result == JFileChooser.APPROVE_OPTION) {
-                        try {
-                            BufferedImage bi = ImageIO.read(ch.getSelectedFile());
-                            setImage(bi);
-                        } catch (IOException e) {
-                            showError(e);
-                            e.printStackTrace();
-                        }
-                    }
-                } else {
-                    // TODO
-                    JOptionPane.showMessageDialog(
-                            gui, "TODO - prompt save image..");
-                }
-            };
+            ActionListener openListener = createOpenListener();
             JMenuItem openItem = new JMenuItem("Open");
             openItem.setMnemonic('o');
             openItem.addActionListener(openListener);
             file.add(openItem);
 
-            ActionListener saveListener = (ActionEvent e) -> {
-                JFileChooser ch = getFileChooser();
-                int result = ch.showSaveDialog(gui);
-                if (result == JFileChooser.APPROVE_OPTION) {
-                    try {
-                        File f = ch.getSelectedFile();
-                        ImageIO.write(UiLauncher.this.canvasImage, "png", f);
-                        dirty = false;
-                    } catch (IOException ioe) {
-                        showError(ioe);
-                        ioe.printStackTrace();
-                    }
-                }
-            };
+            ActionListener saveListener = new SaveActionListener(mainFrame, canvasImage);
             JMenuItem saveItem = new JMenuItem("Save");
             saveItem.addActionListener(saveListener);
             saveItem.setMnemonic('s');
@@ -304,7 +267,6 @@ public class UiLauncher {
 
         if (canExit()) {
             ActionListener exit = (ActionEvent arg0) -> {
-                // TODO Auto-generated method stub
                 System.exit(0);
             };
             JMenuItem exitItem = new JMenuItem("Exit");
@@ -315,6 +277,29 @@ public class UiLauncher {
         }
 
         return file;
+    }
+
+    private ActionListener createOpenListener() {
+        ActionListener openListener = (ActionEvent arg0) -> {
+            if (!dirty) {
+                JFileChooser ch = getFileChooser();
+                int result = ch.showOpenDialog(gui);
+                if (result == JFileChooser.APPROVE_OPTION) {
+                    try {
+                        BufferedImage bi = ImageIO.read(ch.getSelectedFile());
+                        setImage(bi);
+                    } catch (IOException e) {
+                        showError(e);
+                        LOGGER.error("Save error:", e);
+                    }
+                }
+            } else {
+                // TODO
+                JOptionPane.showMessageDialog(
+                        gui, "TODO - prompt save image..");
+            }
+        };
+        return openListener;
     }
 
     private void showError(Throwable t) {
@@ -363,12 +348,13 @@ public class UiLauncher {
         Runnable r = () -> {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-            } catch (Exception e) {
+            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException | UnsupportedLookAndFeelException e) {
                 // use default
+                LOGGER.info("Look and feel error:", e);
             }
             UiLauncher bp = new UiLauncher();
 
-            JFrame f = new JFrame("DooDoodle!");
+            JFrame f = new JFrame("SkyNet");
             f.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             f.setLocationByPlatform(true);
 
@@ -423,20 +409,15 @@ public class UiLauncher {
 
     private void createTrainAction(JToolBar tb) {
         ActionListener actionListener = (ActionEvent arg0) -> {
-            loadNet();
             Dialog d = new Dialog(mainFrame, "Dialog Example", true);
             d.setLayout(new FlowLayout());
             Button okButton = new Button("OK");
             TextField input = new TextField();
             okButton.addActionListener((ActionEvent e) -> {
                 try {
-                    int digit = Integer.parseInt(input.getText());
-                    float[] normalizedPixels = getNetworkInput();
-                    loadNet();
-                    net.fit(Nd4j.create(normalizedPixels), createExpectedOutput(digit));
-                    d.setVisible(false);
-                } catch (IOException ex) {
-                    Logger.getLogger(UiLauncher.class.getName()).log(Level.SEVERE, null, ex);
+                    LearinigLauncher.main(null);
+                } catch (Exception ex) {
+                    LOGGER.error("Train error:", ex);
                 }
             });
             d.add(new Label("What was that?"));
@@ -447,9 +428,9 @@ public class UiLauncher {
             d.setVisible(true);
         };
 
-        JButton recognizeButton = new JButton("Train");
-        tb.add(recognizeButton);
-        recognizeButton.addActionListener(actionListener);
+        JButton trainButton = new JButton("Train");
+        tb.add(trainButton);
+        trainButton.addActionListener(actionListener);
     }
 
     private INDArray createExpectedOutput(int digit) {
@@ -466,7 +447,10 @@ public class UiLauncher {
 //                System.out.println("normalizedPixels.");
 //                System.out.println(Arrays.toString(normalizedPixels));
                 loadNet();
-                INDArray result = net.output(Nd4j.create(normalizedPixels));
+//                INDArray result = net.output(Nd4j.create(normalizedPixels));
+                INDArray input = Nd4j.zeros(1, Constants.AMOUNT_OF_PIXELS_IN_IMAGE);
+                input.putRow(0, Nd4j.create(normalizedPixels));
+                INDArray result = net.output(input);
                 float[] floatVector = result.toFloatVector();
 //                System.out.println(Arrays.toString(floatVector));
                 int maxIndex = 0;
@@ -480,11 +464,8 @@ public class UiLauncher {
                 }
 //                double maxProbablity = IntStream.range(0, floatVector.length).mapToDouble(i -> floatVector[i]).max().getAsDouble();                
                 nnOutput.setText(String.format("This is %s (%.2f%% probability)", maxIndex, maxProbablity * 100));
-//                float[] arr = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5058824f, 0.99607843f, 0.99607843f, 1.0f, 0.91764706f, 0.1764706f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.37254903f, 0.87058824f, 0.99215686f, 0.99215686f, 0.99215686f, 0.99215686f, 0.35686275f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.7921569f, 0.99215686f, 0.99215686f, 0.9019608f, 0.46666667f, 0.3137255f, 0.019607844f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.49803922f, 0.98039216f, 0.99215686f, 0.8980392f, 0.2f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3019608f, 0.9764706f, 0.99215686f, 0.89411765f, 0.20784314f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.78039217f, 0.99215686f, 0.99215686f, 0.7372549f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.30588236f, 0.972549f, 0.99215686f, 0.99215686f, 0.5647059f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5137255f, 0.99215686f, 0.99215686f, 0.90588236f, 0.15686275f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.99215686f, 0.30588236f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.99215686f, 0.2f, 0.0f, 0.0f, 0.05490196f, 0.6117647f, 0.6862745f, 0.09411765f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.99215686f, 0.2f, 0.3137255f, 0.7411765f, 0.7921569f, 0.99215686f, 0.99215686f, 0.4745098f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.2784314f, 0.95686275f, 0.99215686f, 0.99215686f, 0.25882354f, 0.8156863f, 0.99215686f, 0.7372549f, 0.2784314f, 0.75686276f, 0.95686275f, 0.27450982f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.31764707f, 0.972549f, 0.99215686f, 0.99215686f, 0.48235294f, 0.99215686f, 0.9529412f, 0.22745098f, 0.0f, 0.3137255f, 0.9254902f, 0.18431373f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.7882353f, 0.30588236f, 0.95686275f, 0.68235296f, 0.0f, 0.0f, 0.15686275f, 0.99215686f, 0.38039216f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.6862745f, 0.0f, 0.5372549f, 0.09019608f, 0.0f, 0.0f, 0.22352941f, 0.99215686f, 0.38039216f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.8745098f, 0.1254902f, 0.0f, 0.0f, 0.0f, 0.11372549f, 0.8666667f, 0.98039216f, 0.34117648f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.87058824f, 0.99215686f, 0.99215686f, 0.5254902f, 0.078431375f, 0.019607844f, 0.019607844f, 0.24313726f, 0.99215686f, 0.8666667f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.56078434f, 0.9843137f, 0.99215686f, 0.99215686f, 0.99215686f, 0.67058825f, 0.6509804f, 0.99215686f, 0.99215686f, 0.57254905f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.5568628f, 0.7019608f, 0.9764706f, 0.99215686f, 0.99215686f, 0.99215686f, 0.99215686f, 0.8980392f, 0.16470589f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.13725491f, 0.6117647f, 0.99215686f, 0.99215686f, 0.63529414f, 0.16078432f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
-//                INDArray result1 = net.output(Nd4j.create(arr));
-//                System.out.println(Arrays.toString(result1.toFloatVector()));
             } catch (IOException ex) {
-                Logger.getLogger(UiLauncher.class.getName()).log(Level.SEVERE, null, ex);
+                LOGGER.error("Recognize error:", ex);
             }
         };
 

@@ -25,6 +25,7 @@ public class ImageConverterLauncher {
 
     public static void main(String... args) {
         JpegImageConverter converter = new JpegImageConverter();
-        converter.mnistDbToJpegImages(Constants.TRAINING_IMAGES_FILE_PATH);
+        converter.mnistDbToJpegImages(Constants.TRAINING_IMAGES_FILE_PATH, Constants.TRAINING_LABELS_FILE_PATH, Constants.IMAGES_PATH);
+//        converter.mnistDbToJpegImages(Constants.TEST_IMAGES_FILE_PATH, Constants.TEST_LABELS_FILE_PATH, Constants.TEST_IMAGES_PATH);
     }
 }

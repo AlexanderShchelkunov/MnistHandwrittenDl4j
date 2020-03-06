@@ -21,9 +21,11 @@ import static com.sandro.mnisthandwrittendl4j.Constants.*;
 import com.sandro.mnisthandwrittendl4j.model.ImageModel;
 import com.sandro.mnisthandwrittendl4j.neural.ImageToINDArrayConverter;
 import com.sandro.mnisthandwrittendl4j.neural.CustomIterator;
+import com.sandro.mnisthandwrittendl4j.neural.ImageIteratorFactory;
 import com.sandro.mnisthandwrittendl4j.neural.NeuralNetworkManager;
 import java.util.List;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 
@@ -36,14 +38,14 @@ public class LearinigLauncher {
     public static void main(String[] args) throws Exception {
         // load taining images
         MnistImagesLoader imagesLoader = new MnistImagesLoader();
-        List<ImageModel> trainingImages = imagesLoader.loadImages(TRAINING_IMAGES_FILE_PATH, TRAINING_LABELS_FILE_PATH, LEARN_SET_SIZE);
+//        DataSetIterator iterator = createMemoryIterator(imagesLoader);
+        DataSetIterator iterator = new ImageIteratorFactory().get(Constants.IMAGES_PATH);
 
         // train model
         ImageToINDArrayConverter converter = new ImageToINDArrayConverter();
 //        DataSet ds = new DataSet(converter.createInput(trainingImages), converter.createExpectedOutput(trainingImages));
-        DataSetIterator iterator = new CustomIterator(trainingImages);
         NeuralNetworkManager nnManager = new NeuralNetworkManager();
-        MultiLayerNetwork network = nnManager.createNetwork();
+        MultiLayerNetwork network = nnManager.createNetwork1();
 
 //        RecordReader recordReader = new ImageRecordReader(28, 28, 1, new CustomPathLabelGenerator());
         // Point to data path. 
@@ -53,6 +55,17 @@ public class LearinigLauncher {
         nnManager.train2(network, iterator);
         nnManager.saveModel(network);
 
+//        test(imagesLoader, converter, nnManager, network);
+        test(network);
+    }
+
+    private static DataSetIterator createMemoryIterator(MnistImagesLoader imagesLoader) {
+        List<ImageModel> trainingImages = imagesLoader.loadImages(TRAINING_IMAGES_FILE_PATH, TRAINING_LABELS_FILE_PATH, LEARN_SET_SIZE);
+        DataSetIterator iterator = new CustomIterator(trainingImages);
+        return iterator;
+    }
+
+    private static void test(MnistImagesLoader imagesLoader, ImageToINDArrayConverter converter, NeuralNetworkManager nnManager, MultiLayerNetwork network) {
         // load test images
         System.out.println("Loading test images.");
         List<ImageModel> testImages = imagesLoader.loadImages(TEST_IMAGES_FILE_PATH, TEST_LABELS_FILE_PATH, TEST_SET_SIZE);
@@ -64,5 +77,19 @@ public class LearinigLauncher {
         nnManager.test(network, input, expectedOutput);
 
 //        DataSetIterator iter = new RecordReaderDataSetIterator(recordReader, 784, 10);
+    }
+
+    private static void test(MultiLayerNetwork network) {
+        DataSetIterator iterator = new ImageIteratorFactory().get(Constants.TEST_IMAGES_PATH);
+//        // let Evaluation prints stats how often the right output had the highest value
+//        INDArray output = network.output(iterator);
+//        // System.out.println(output);
+//        System.out.println("Evaluation error rate.");
+//        Evaluation eval = new Evaluation(Constants.AMOUNT_OF_DIGITS);
+//        eval.eval(iterator.get, output);
+//        Evaluation eval = network.evaluate(iterator);
+        Evaluation evaluation = network.doEvaluation(iterator, new Evaluation(10))[0];
+//        eval.
+        System.out.println(evaluation.stats());
     }
 }

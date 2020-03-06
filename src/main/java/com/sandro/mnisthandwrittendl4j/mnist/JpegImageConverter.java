@@ -33,9 +33,9 @@ public class JpegImageConverter {
     private static final int IMAGES_OFFSET = 16;
     private static final int LABELS_OFFSET = 8;
 
-    public void mnistDbToJpegImages(String filePath) {
-        List<String> labels = readImagesLabels();
-        File file = new File(filePath);
+    public void mnistDbToJpegImages(String sourceFile, String sourceLabelsFile, String destFolder) {
+        List<String> labels = readImagesLabels(sourceLabelsFile);
+        File file = new File(sourceFile);
         try (FileInputStream fis = new FileInputStream(file)) {
             fis.skip(IMAGES_OFFSET);
             int curPixel = 0;
@@ -51,7 +51,7 @@ public class JpegImageConverter {
                         System.out.printf("Images parsed %s.%n", curImage);
                     }
 
-                    saveImageToDisk(pixels, curImage, labels.get(curImage - 1));
+                    saveImageToDisk(pixels, curImage, labels.get(curImage - 1), destFolder);
                     pixels = new int[Constants.AMOUNT_OF_PIXELS_IN_IMAGE];
                     curPixel = 0;
                 }
@@ -61,8 +61,8 @@ public class JpegImageConverter {
         }
     }
 
-    private List<String> readImagesLabels() {
-        File file = new File(Constants.TRAINING_LABELS_FILE_PATH);
+    private List<String> readImagesLabels(String sourceLabelsFile) {
+        File file = new File(sourceLabelsFile);
         List<String> labels = new ArrayList<>();
         try (FileInputStream fis = new FileInputStream(file)) {
             fis.skip(LABELS_OFFSET);
@@ -77,7 +77,7 @@ public class JpegImageConverter {
         return labels;
     }
 
-    private static void saveImageToDisk(int[] pixels, int curImage, String label) throws IOException {
+    private static void saveImageToDisk(int[] pixels, int curImage, String label, String destFolder) throws IOException {
         BufferedImage img = new BufferedImage(Constants.IMAGE_WIDTH, Constants.IMAGE_HEIGTH, BufferedImage.TYPE_BYTE_GRAY);
         for (int y = 0; y < Constants.IMAGE_HEIGTH; y++) {
             for (int x = 0; x < Constants.IMAGE_WIDTH; x++) {
@@ -86,7 +86,7 @@ public class JpegImageConverter {
             }
         }
 
-        File file = new File(Constants.IMAGES_PATH + curImage + "-" + label + "." + Constants.IMAGES_EXTENSION);
+        File file = new File(destFolder + curImage + "-" + label + "." + Constants.IMAGES_EXTENSION);
         ImageIO.write(img, Constants.IMAGES_EXTENSION, file);
     }
 
@@ -98,6 +98,7 @@ public class JpegImageConverter {
         red = (red << 16) & 0x00FF0000;
         green = (green << 8) & 0x0000FF00;
         blue = blue & 0x000000FF;
-        return 0xFF000000 | red | green | blue;
+        int resultColor = 0xFF000000 | red | green | blue;
+        return 0xFFFFFF - resultColor; // invert color (I want white background instead of black).
     }
 }

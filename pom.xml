@@ -9,11 +9,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <nd4j.version>1.0.0-beta3</nd4j.version>
-        <dl4j.version>1.0.0-beta3</dl4j.version>
-        <datavec.version>1.0.0-beta3</datavec.version>
-        <arbiter.version>1.0.0-beta3</arbiter.version>
-        <rl4j.version>1.0.0-beta3</rl4j.version>
+        <nd4j.version>1.0.0-beta6</nd4j.version>
         <nd4j.backend>nd4j-native-platform</nd4j.backend>
         <slf4j.version>1.7.26</slf4j.version>
         <logback.version>1.2.3</logback.version>
@@ -27,16 +23,10 @@
             <version>${nd4j.version}</version>
         </dependency>
         
-        <!--        <dependency>
-            <groupId>org.deeplearning4j</groupId>
-            <artifactId>dl4j</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-            <type>jar</type>
-        </dependency>-->
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-nn</artifactId>
-            <version>1.0.0-beta3</version>
+            <version>${nd4j.version}</version>
             <type>jar</type>
         </dependency>
         <dependency>
@@ -48,35 +38,30 @@
         <dependency>
             <groupId>org.datavec</groupId>
             <artifactId>datavec-api</artifactId>
-            <version>1.0.0-beta3</version>
+            <version>${nd4j.version}</version>
             <type>jar</type>
         </dependency>
         <dependency>
             <groupId>org.deeplearning4j</groupId>
             <artifactId>deeplearning4j-core</artifactId>
-            <version>1.0.0-beta3</version>
+            <version>${nd4j.version}</version>
             <type>jar</type>
         </dependency>
         
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-native-platform</artifactId>
-            <version>1.0.0-beta3</version>
+            <version>${nd4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-9.0-platform</artifactId>
-            <version>1.0.0-beta3</version>
-        </dependency>
-        <dependency>
-            <groupId>org.nd4j</groupId>
-            <artifactId>nd4j-cuda-9.2-platform</artifactId>
-            <version>1.0.0-beta3</version>
+            <artifactId>nd4j-cuda-10.0</artifactId>
+            <version>${nd4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.nd4j</groupId>
             <artifactId>nd4j-cuda-10.0-platform</artifactId>
-            <version>1.0.0-beta3</version>
+            <version>${nd4j.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>

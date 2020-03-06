@@ -28,6 +28,7 @@ public class Constants {
     public static final String TEST_LABELS_FILE_PATH = "./mnist_db/t10k-labels.idx1-ubyte";
     public static final String IMAGES_PATH = "./images/";
     public static final String IMAGES_EXTENSION = "jpeg";
+    public static final String TEST_IMAGES_PATH = "./testImages/";
 
     public static final int IMAGE_WIDTH = 28;
     public static final int IMAGE_HEIGTH = 28;
