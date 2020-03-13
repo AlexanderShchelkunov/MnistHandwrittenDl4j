@@ -418,48 +418,9 @@ public class UiLauncher {
     }
 
     private void createTrainAction(JToolBar tb) {
-        ActionListener actionListener = (ActionEvent arg0) -> {
-            try {
-                Dialog dialog = new Dialog(mainFrame, "Traing in propgress, please wait", true);
-                dialog.setLayout(new FlowLayout());
-                JProgressBar progressBar = new JProgressBar();
-                progressBar.setIndeterminate(true);
-                dialog.add(progressBar);
-                dialog.setSize(300, 300);
-                dialog.setLocationRelativeTo(mainFrame);
-                dialog.add(new Label("Training might take 5+ minutes. Please wait..."));
-
-                SwingWorker worker = new SwingWorker() {
-                    @Override
-                    public String doInBackground() throws Exception {
-                        LearinigLauncher.main(null);
-                        net = null;
-                        loadNet();
-                        return null;
-                    }
-
-                    @Override
-                    public void done() {
-                        SwingUtilities.invokeLater(() -> {
-                            dialog.setVisible(false);
-                            dialog.dispose();
-                        });
-                    }
-                };
-
-                worker.execute();
-                SwingUtilities.invokeLater(() -> {
-                    dialog.setVisible(true);
-                });
-
-            } catch (Exception ex) {
-                LOGGER.error("Train error:", ex);
-            }
-        };
-
         JButton trainButton = new JButton("Train");
         tb.add(trainButton);
-        trainButton.addActionListener(actionListener);
+        trainButton.addActionListener(new TrainActionListener(this, mainFrame));
     }
 
     private INDArray createExpectedOutput(int digit) {
